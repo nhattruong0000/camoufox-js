@@ -33,8 +33,8 @@ import { firefox } from 'playwright-core';
 // you might need to run `npx camoufox-js fetch` to download the browser after installing the package
 
 const browser = await firefox.launch({
-    launchOptions: await launchOptions({ /* Camoufox options */ }),
-    // other Playwright options
+    ...await launchOptions({ /* Camoufox options */ }),
+    // other Playwright options, overriding the Camoufox options
 });
             
 const page = await browser.newPage(); // `page` is a Playwright Page instance
