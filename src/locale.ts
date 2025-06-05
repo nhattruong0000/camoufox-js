@@ -1,4 +1,4 @@
-import { LOCAL_DATA, GitHubDownloader, webdl } from './pkgman.js';
+import { GitHubDownloader, webdl, INSTALL_DIR } from './pkgman.js';
 import { LeakWarning } from './warnings.js';
 import {
     InvalidLocale,
@@ -145,7 +145,7 @@ function joinUnique(seq: string[]): string {
     return seq.filter(x => !seen.has(x) && seen.add(x)).join(', ');
 }
 
-const MMDB_FILE = path.join(LOCAL_DATA.toString(), 'GeoLite2-City.mmdb');
+const MMDB_FILE = path.join(INSTALL_DIR.toString(), 'GeoLite2-City.mmdb');
 const MMDB_REPO = "P3TERX/GeoLite.mmdb";
 
 class MaxMindDownloader extends GitHubDownloader {
