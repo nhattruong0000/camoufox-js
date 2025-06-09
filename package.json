@@ -1,6 +1,6 @@
 {
   "name": "camoufox-js",
-  "version": "0.3.7",
+  "version": "0.4.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -15,7 +15,7 @@
   "type": "module",
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MPL-2.0",
   "description": "Experimental JS port of Camoufox for Python.",
   "packageManager": "yarn@4.9.2",
   "dependencies": {
