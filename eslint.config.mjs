@@ -1,6 +1,8 @@
-import apifyTypescriptConfig from "@apify/eslint-config/ts.js";
 import eslintConfigPrettier from "eslint-config-prettier/flat";
 
+import apifyTypescriptConfig from "@apify/eslint-config/ts.js";
+
+// eslint-disable-next-line import/no-default-export
 export default [
   { ignores: ["**/dist", "**/test"] }, // Ignores need to happen first
   ...apifyTypescriptConfig,

@@ -70,7 +70,7 @@ class Version {
   private buildSortedRel(): number[] {
     const parts = this.release
       .split(".")
-      .map((x) => (isNaN(Number(x)) ? x.charCodeAt(0) - 1024 : Number(x)));
+      .map((x) => (Number.isNaN(Number(x)) ? x.charCodeAt(0) - 1024 : Number(x)));
     while (parts.length < 5) {
       parts.push(0);
     }
@@ -108,8 +108,8 @@ class Version {
     return new Version(versionData.release, versionData.version);
   }
 
-  static isSupportedPath(path: PathLike): boolean {
-    return Version.fromPath(path).isSupported();
+  static isSupportedPath(p: PathLike): boolean {
+    return Version.fromPath(p).isSupported();
   }
 
   static buildMinMax(): [Version, Version] {
@@ -249,7 +249,7 @@ export class CamoufoxFetcher extends GitHubDownloader {
 
   async install(): Promise<void> {
     await this.init();
-    await CamoufoxFetcher.cleanup();
+    CamoufoxFetcher.cleanup();
     try {
       fs.mkdirSync(INSTALL_DIR, { recursive: true });
 
@@ -264,7 +264,7 @@ export class CamoufoxFetcher extends GitHubDownloader {
       console.log("Camoufox successfully installed.");
     } catch (e) {
       console.error(`Error installing Camoufox: ${e}`);
-      await CamoufoxFetcher.cleanup();
+      CamoufoxFetcher.cleanup();
       throw e;
     }
   }

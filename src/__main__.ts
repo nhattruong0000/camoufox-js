@@ -67,7 +67,7 @@ class CamoufoxUpdate extends CamoufoxFetcher {
     if (!existsSync(INSTALL_DIR)) {
       return false;
     }
-    await rmSync(INSTALL_DIR, { recursive: true, force: true });
+    rmSync(INSTALL_DIR, { recursive: true, force: true });
     console.log("Camoufox binaries removed!");
     return true;
   }
@@ -79,7 +79,7 @@ program.command("fetch").action(async () => {
   const updater = await CamoufoxUpdate.create();
   await updater.update();
   if (ALLOW_GEOIP) {
-    downloadMMDB();
+    await downloadMMDB();
   }
   maybeDownloadAddons(DefaultAddons);
 });
@@ -126,12 +126,12 @@ program.command("path").action(() => {
 });
 
 program.command("version").action(async () => {
-  try {
-    const pkgVersion = require("pkg-version");
-    console.log(`Pip package:\tv${pkgVersion("camoufox")}`);
-  } catch (error) {
-    console.log("Pip package:\tNot installed!", "red");
-  }
+  // try {
+  //   const pkgVersion = require("pkg-version");
+  //   console.log(`Pip package:\tv${pkgVersion("camoufox")}`);
+  // } catch (error) {
+  //   console.log("Pip package:\tNot installed!", "red");
+  // }
 
   const updater = await CamoufoxUpdate.create();
   const binVer = updater.currentVerStr;

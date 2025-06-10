@@ -8,8 +8,8 @@ import { VirtualDisplay } from "./virtdisplay.js";
 export async function Camoufox(
   launch_options: LaunchOptions | { headless?: boolean | "virtual" },
 ) {
-  const { headless, ...launchOptions } = launch_options;
-  return NewBrowser(firefox, headless, {}, false, false, launchOptions);
+  const { headless, ...rest } = launch_options;
+  return NewBrowser(firefox, headless, {}, false, false, rest);
 }
 
 export async function NewBrowser(

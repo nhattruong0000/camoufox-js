@@ -3,8 +3,8 @@ import { execFileSync, spawn } from "node:child_process";
 // import { globSync } from 'glob';
 import { randomInt } from "node:crypto";
 import { existsSync } from "node:fs";
-import { tmpdir } from "node:os";
 
+// import { tmpdir } from "node:os";
 import {
   CannotExecuteXvfb,
   CannotFindXvfb,

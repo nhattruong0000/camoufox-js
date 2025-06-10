@@ -32,6 +32,11 @@ export function addDefaultAddons(
   addonsList: string[],
   excludeList: (keyof typeof DefaultAddons)[] = [],
 ): void {
+  console.warn(
+    "Addons are not yet supported in Camoufox.",
+    addonsList,
+    excludeList
+  );
   // TODO - enable addons
   /**
    * Adds default addons, minus any specified in excludeList, to addonsList
@@ -49,7 +54,7 @@ export async function downloadAndExtract(
   name: string,
 ): Promise<void> {
   const buffer = await webdl(url, `Downloading addon (${name})`, false);
-  unzip(buffer, extractPath, `Extracting addon (${name})`, false);
+  await unzip(buffer, extractPath, `Extracting addon (${name})`, false);
 }
 
 /**
