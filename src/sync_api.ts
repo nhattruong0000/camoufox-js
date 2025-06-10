@@ -2,7 +2,7 @@ import type { Browser, BrowserContext, BrowserType } from "playwright-core";
 import { firefox } from "playwright-core";
 
 import type { LaunchOptions } from "./utils.js";
-import { launchOptions, syncAttachVD } from "./utils.js";
+import { launchOptions as getLaunchOptions, syncAttachVD } from "./utils.js";
 import { VirtualDisplay } from "./virtdisplay.js";
 
 export async function Camoufox(
@@ -22,16 +22,18 @@ export async function NewBrowser(
 ): Promise<Browser | BrowserContext> {
   let virtualDisplay: VirtualDisplay | null = null;
 
+  const launchOptions = { ...launch_options };
+
   if (headless === "virtual") {
     virtualDisplay = new VirtualDisplay(debug);
-    launch_options.virtual_display = virtualDisplay.get();
-    launch_options.headless = false;
+    launchOptions.virtual_display = virtualDisplay.get();
+    launchOptions.headless = false;
   } else {
-    launch_options.headless ||= headless;
+    launchOptions.headless ||= headless;
   }
 
   if (!fromOptions || Object.keys(fromOptions).length === 0) {
-    fromOptions = await launchOptions({ debug, ...launch_options });
+    fromOptions = await getLaunchOptions({ debug, ...launchOptions });
   }
 
   if (persistentContext) {

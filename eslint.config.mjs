@@ -1,3 +1,4 @@
+// eslint-disable-next-line import/extensions
 import eslintConfigPrettier from "eslint-config-prettier/flat";
 
 import apifyTypescriptConfig from "@apify/eslint-config/ts.js";

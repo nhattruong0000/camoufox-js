@@ -205,15 +205,9 @@ function getScreenCons(headless?: boolean): Screen | undefined {
   return undefined;
 }
 
-function updateFonts(config: Record<string, any>, targetOS: string): void {
+function getFonts(targetOS: string): string[] {
   const fontsPath = join(import.meta.dirname, "data-files", "fonts.json");
-  const fonts = JSON.parse(readFileSync(fontsPath, "utf-8"))[targetOS];
-
-  if (config.fonts) {
-    config.fonts = Array.from(new Set([...fonts, ...config.fonts]));
-  } else {
-    config.fonts = fonts;
-  }
+  return JSON.parse(readFileSync(fontsPath, "utf-8"))[targetOS];
 }
 
 function checkCustomFingerprint(fingerprint: Fingerprint): void {
@@ -244,11 +238,11 @@ function validateOS(
   return [os];
 }
 
-function cleanLocals(data: Record<string, any>): Record<string, any> {
-  delete data.playwright;
-  delete data.persistentContext;
-  return data;
-}
+// function cleanLocals(data: Record<string, any>): Record<string, any> {
+//   delete data.playwright;
+//   delete data.persistentContext;
+//   return data;
+// }
 
 function mergeInto(
   target: Record<string, any>,
@@ -305,27 +299,27 @@ function warnManualConfig(config: Record<string, any>): void {
   }
 }
 
-async function asyncAttachVD(
-  browser: any,
-  virtualDisplay?: VirtualDisplay,
-): Promise<any> {
-  if (!virtualDisplay) {
-    return browser;
-  }
+// async function asyncAttachVD(
+//   browser: any,
+//   virtualDisplay?: VirtualDisplay,
+// ): Promise<any> {
+//   if (!virtualDisplay) {
+//     return browser;
+//   }
 
-  const originalClose = browser.close;
+//   const originalClose = browser.close;
 
-  browser.close = async (...args: any[]) => {
-    await originalClose.apply(browser, ...args);
-    if (virtualDisplay) {
-      virtualDisplay.kill();
-    }
-  };
+//   browser.close = async (...args: any[]) => {
+//     await originalClose.apply(browser, ...args);
+//     if (virtualDisplay) {
+//       virtualDisplay.kill();
+//     }
+//   };
 
-  browser._virtualDisplay = virtualDisplay;
+//   browser._virtualDisplay = virtualDisplay;
 
-  return browser;
-}
+//   return browser;
+// }
 
 export function syncAttachVD(
   browser: any,
@@ -480,7 +474,7 @@ function getProxyUrl(
     // In both of these cases, we need to try re-parse URL with `http://` prefix.
     url = new URL(server);
     if (!url.host || !url.protocol) url = new URL(`http://${server}`);
-  } catch (e) {
+  } catch {
     url = new URL(`http://${server}`);
   }
 
@@ -491,7 +485,7 @@ function getProxyUrl(
 }
 
 export async function launchOptions({
-  config,
+  config: configOpts,
   os,
   block_images,
   block_webrtc,
@@ -507,7 +501,7 @@ export async function launchOptions({
   exclude_addons,
   screen,
   window,
-  fingerprint,
+  fingerprint: customFingerprint,
   ff_version,
   headless,
   main_world_eval,
@@ -523,9 +517,7 @@ export async function launchOptions({
   ...launch_options
 }: LaunchOptions): Promise<Record<string, any>> {
   // Build the config
-  if (!config) {
-    config = {};
-  }
+  let config = configOpts ?? {};
 
   // Set default values for optional arguments
   if (headless === undefined) {
@@ -534,25 +526,14 @@ export async function launchOptions({
   if (!addons) {
     addons = [];
   }
-  if (!args) {
-    args = [];
-  }
-  if (!firefox_user_prefs) {
-    firefox_user_prefs = {};
-  }
-  if (custom_fonts_only === undefined) {
-    custom_fonts_only = false;
-  }
-  if (i_know_what_im_doing === undefined) {
-    i_know_what_im_doing = false;
-  }
+
+  const firefoxUserPrefs = firefox_user_prefs ?? {};
+
   if (!env) {
     env = process.env as Record<string, string | number | boolean>;
   }
-  if (typeof executable_path === "string") {
-    // Convert executable path to a Path object
-    executable_path = path.resolve(executable_path);
-  }
+
+  let executablePath = typeof executable_path === "string" ? path.resolve(executable_path) : executable_path;
 
   // Handle virtual display
   if (virtual_display) {
@@ -589,17 +570,13 @@ export async function launchOptions({
     ff_version_str = installedVerStr().split(".", 1)[0];
   }
 
-  // Generate a fingerprint
-  if (!fingerprint) {
-    fingerprint = generateFingerprint(window, {
-      screen: screen || getScreenCons(headless || "DISPLAY" in env),
-      operatingSystems,
-    });
-  } else {
-    // Or use the one passed by the user
-    if (!i_know_what_im_doing) {
-      checkCustomFingerprint(fingerprint);
-    }
+  const fingerprint = customFingerprint ?? generateFingerprint(window, {
+    screen: screen || getScreenCons(headless || "DISPLAY" in env),
+    operatingSystems,
+  });
+  
+  if (customFingerprint && !i_know_what_im_doing) {
+    checkCustomFingerprint(customFingerprint);
   }
 
   // Inject the fingerprint into the config
@@ -616,7 +593,7 @@ export async function launchOptions({
   }
 
   if (custom_fonts_only) {
-    firefox_user_prefs["gfx.bundled-fonts.activate"] = 0;
+    firefoxUserPrefs["gfx.bundled-fonts.activate"] = 0;
     if (fonts) {
       // The user has passed their own fonts, and OS fonts are disabled.
       LeakWarning.warn("custom_fonts_only");
@@ -627,7 +604,12 @@ export async function launchOptions({
       );
     }
   } else {
-    updateFonts(config, targetOS);
+    const osFonts = getFonts(targetOS);
+    if (config.fonts) {
+      config.fonts = [...new Set([...config.fonts, ...osFonts])];
+    } else {
+      config.fonts = osFonts;
+    }
   }
 
   // Set a fixed font spacing seed
@@ -645,19 +627,19 @@ export async function launchOptions({
     geoipAllowed();
 
     // Find the user's IP address
-    geoip = await publicIP(proxyUrl?.href);
+    const ipAddress = await publicIP(proxyUrl?.href);
 
     // Spoof WebRTC if not blocked
     if (!block_webrtc) {
-      if (validIPv4(geoip)) {
-        setInto(config, "webrtc:ipv4", geoip);
-        firefox_user_prefs["network.dns.disableIPv6"] = true;
-      } else if (validIPv6(geoip)) {
-        setInto(config, "webrtc:ipv6", geoip);
+      if (validIPv4(ipAddress)) {
+        setInto(config, "webrtc:ipv4", ipAddress);
+        firefoxUserPrefs["network.dns.disableIPv6"] = true;
+      } else if (validIPv6(ipAddress)) {
+        setInto(config, "webrtc:ipv6", ipAddress);
       }
     }
 
-    const geolocation = await getGeolocation(geoip);
+    const geolocation = await getGeolocation(ipAddress);
     config = { ...config, ...geolocation.asConfig() };
   }
 
@@ -666,46 +648,46 @@ export async function launchOptions({
   if (
     proxyUrl &&
     !proxyUrl.hostname.includes("localhost") &&
-    !isDomainSet(config, "geolocation:")
+    !isDomainSet(configOpts, "geolocation:")
   ) {
     LeakWarning.warn("proxy_without_geoip");
   }
 
   // Set locale
   if (locale) {
-    handleLocales(locale, config);
+    await handleLocales(locale, configOpts);
   }
 
   // Pass the humanize option
   if (humanize) {
-    setInto(config, "humanize", true);
+    setInto(configOpts, "humanize", true);
     if (typeof humanize === "number") {
-      setInto(config, "humanize:maxTime", humanize);
+      setInto(configOpts, "humanize:maxTime", humanize);
     }
   }
 
   // Enable the main world context creation
   if (main_world_eval) {
-    setInto(config, "allowMainWorld", true);
+    setInto(configOpts, "allowMainWorld", true);
   }
 
   // Set Firefox user preferences
   if (block_images) {
     LeakWarning.warn("block_images", i_know_what_im_doing);
-    firefox_user_prefs["permissions.default.image"] = 2;
+    firefoxUserPrefs["permissions.default.image"] = 2;
   }
   if (block_webrtc) {
-    firefox_user_prefs["media.peerconnection.enabled"] = false;
+    firefoxUserPrefs["media.peerconnection.enabled"] = false;
   }
   if (disable_coop) {
     LeakWarning.warn("disable_coop", i_know_what_im_doing);
-    firefox_user_prefs["browser.tabs.remote.useCrossOriginOpenerPolicy"] =
+    firefoxUserPrefs["browser.tabs.remote.useCrossOriginOpenerPolicy"] =
       false;
   }
 
   // Allow allow_webgl parameter for backwards compatibility
   if (block_webgl || launch_options.allow_webgl === false) {
-    firefox_user_prefs["webgl.disabled"] = true;
+    firefoxUserPrefs["webgl.disabled"] = true;
     LeakWarning.warn("block_webgl", i_know_what_im_doing);
   } else {
     // If the user has provided a specific WebGL vendor/renderer pair, use it
@@ -720,7 +702,7 @@ export async function launchOptions({
     // Merge the WebGL fingerprint into the config
     mergeInto(config, webGlConfig);
     // Set the WebGL preferences
-    mergeInto(firefox_user_prefs, {
+    mergeInto(firefoxUserPrefs, {
       "webgl.enable-webgl2": webGl2Enabled,
       "webgl.force-enabled": true,
     });
@@ -734,17 +716,17 @@ export async function launchOptions({
 
   // Cache previous pages, requests, etc (uses more memory)
   if (enable_cache) {
-    mergeInto(firefox_user_prefs, CACHE_PREFS);
+    mergeInto(firefoxUserPrefs, CACHE_PREFS);
   }
 
   // Print the config if debug is enabled
   if (debug) {
     console.debug("[DEBUG] Config:");
-    console.debug(config);
+    console.debug(configOpts);
   }
 
   // Validate the config
-  validateConfig(config, executable_path);
+  validateConfig(config, executablePath);
 
   // Prepare environment variables to pass to Camoufox
   const env_vars = {
@@ -753,17 +735,17 @@ export async function launchOptions({
   };
 
   // Prepare the executable path
-  if (executable_path) {
-    executable_path = executable_path.toString();
+  if (executablePath) {
+    executablePath = executablePath.toString();
   } else {
-    executable_path = launchPath();
+    executablePath = launchPath();
   }
 
   const out: PlaywrightLaunchOptions = {
-    executablePath: executable_path,
+    executablePath,
     args,
-    env: env_vars as any,
-    firefoxUserPrefs: firefox_user_prefs,
+    env: env_vars,
+    firefoxUserPrefs,
     proxy: proxyUrl
       ? {
           server: proxyUrl.origin,

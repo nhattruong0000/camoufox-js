@@ -362,13 +362,13 @@ export function getPath(file: string): string {
 }
 
 export function launchPath(): string {
-  const launchPath = getPath(LAUNCH_FILE[OS_NAME]);
-  if (!fs.existsSync(launchPath)) {
+  const p = getPath(LAUNCH_FILE[OS_NAME]);
+  if (!fs.existsSync(p)) {
     throw new CamoufoxNotInstalled(
       `Camoufox is not installed at ${camoufoxPath()}. Please run \`camoufox fetch\` to install.`,
     );
   }
-  return launchPath;
+  return p;
 }
 
 export async function webdl(

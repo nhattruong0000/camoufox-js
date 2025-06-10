@@ -95,16 +95,17 @@ export function normalizeLocale(locale: string): Locale {
   );
 }
 
-export function handleLocale(locale: string, ignoreRegion = false): Locale {
+export async function handleLocale(locale: string, ignoreRegion = false): Promise<Locale> {
   if (locale.length > 3) {
     return normalizeLocale(locale);
   }
 
+  const selector = await StatisticalLocaleSelector.get();
+
   try {
-    return SELECTOR.fromRegion(locale);
+    return selector.fromRegion(locale);
   } catch (e) {
-    if (e instanceof UnknownTerritory) {
-    } else {
+    if (!(e instanceof UnknownTerritory)) {
       throw e;
     }
   }
@@ -115,12 +116,11 @@ export function handleLocale(locale: string, ignoreRegion = false): Locale {
   }
 
   try {
-    const language = SELECTOR.fromLanguage(locale);
+    const language = selector.fromLanguage(locale);
     LeakWarning.warn("no_region");
     return language;
   } catch (e) {
-    if (e instanceof UnknownLanguage) {
-    } else {
+    if (!(e instanceof UnknownLanguage)) {
       throw e;
     }
   }
@@ -128,15 +128,15 @@ export function handleLocale(locale: string, ignoreRegion = false): Locale {
   throw InvalidLocale.invalidInput(locale);
 }
 
-export function handleLocales(
+export async function handleLocales(
   locales: string | string[],
   config: Record<string, any>,
-): void {
+): Promise<void> {
   if (typeof locales === "string") {
     locales = locales.split(",").map((loc) => loc.trim());
   }
 
-  const intlLocale = handleLocale(locales[0]);
+  const intlLocale = await handleLocale(locales[0]);
   config = { ...config, ...intlLocale.asConfig() };
 
   if (locales.length < 2) {
@@ -144,7 +144,9 @@ export function handleLocales(
   }
 
   config["locale:all"] = joinUnique(
-    locales.map((locale) => handleLocale(locale, true).asString()),
+    (await Promise.all(locales.map(async (locale) => handleLocale(locale, true)))).map((loc) =>
+      loc.asString(),
+    ),
   );
 }
 
@@ -225,7 +227,9 @@ export async function getGeolocation(ip: string): Promise<Geolocation> {
     throw new UnknownIPLocation(`Unknown IP location: ${ip}`);
   }
 
-  const locale = SELECTOR.fromRegion(isoCode);
+  const selector = await StatisticalLocaleSelector.get();
+
+  const locale = selector.fromRegion(isoCode);
 
   return new Geolocation(
     locale,
@@ -249,9 +253,15 @@ function asFloat(element: any, attr: string): number {
 
 class StatisticalLocaleSelector {
   private root: any;
+  private static instance: StatisticalLocaleSelector | null = null;
 
-  constructor() {
-    this.loadUnicodeInfo();
+  public static async get() {
+    if (this.instance === null) {
+      this.instance = new StatisticalLocaleSelector();
+      await this.instance.loadUnicodeInfo();
+    }
+
+    return this.instance;
   }
 
   private async loadUnicodeInfo() {
@@ -326,12 +336,10 @@ class StatisticalLocaleSelector {
   }
 
   private weightedRandomChoice<T>(items: T[], weights: number[]): T {
-    const cumulativeWeights = weights.map(
-      (
-        (sum) => (value: number) =>
-          (sum += value)
-      )(0),
-    );
+    const cumulativeWeights = weights.map((_, i, a) => {
+      return a.slice(0, i + 1).reduce((sum, weight) => sum + weight, 0);
+    });
+
     const random =
       Math.random() * cumulativeWeights[cumulativeWeights.length - 1];
     return items[cumulativeWeights.findIndex((weight) => weight > random)];
@@ -352,5 +360,3 @@ class StatisticalLocaleSelector {
     return normalizeLocale(`${language}-${region}`);
   }
 }
-
-const SELECTOR = new StatisticalLocaleSelector();

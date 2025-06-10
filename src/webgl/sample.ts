@@ -62,9 +62,9 @@ export async function sampleWebGL(
           db.all(
             `SELECT DISTINCT vendor, renderer FROM webgl_fingerprints WHERE ${os} > 0`,
             [],
-            (err, pairs: { vendor: string; renderer: string }[]) => {
-              if (err) {
-                reject(err);
+            (sqlError, pairs: { vendor: string; renderer: string }[]) => {
+              if (sqlError) {
+                reject(sqlError);
                 return;
               }
               reject(
