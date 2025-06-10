@@ -26,7 +26,7 @@ export async function sampleWebGL(os: 'win' | 'mac' | 'lin', vendor?: string, re
 
     const db = new Database(DB_PATH);
     let query = '';
-    let params: any[] = [];
+    let params: string[] = [];
 
     if (vendor && renderer) {
         query = `SELECT vendor, renderer, data, ${os} FROM webgl_fingerprints WHERE vendor = ? AND renderer = ?`;

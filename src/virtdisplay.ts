@@ -92,7 +92,7 @@ export class VirtualDisplay {
     }
 
     public static _get_lock_files(): string[] {
-        const tmpd = process.env.TMPDIR || tmpdir();
+        // const tmpd = process.env.TMPDIR || tmpdir();
         try {
             return [];
             // return globSync(join(tmpd, ".X*-lock")).filter(p => existsSync(p));
@@ -102,7 +102,7 @@ export class VirtualDisplay {
     }
 
     private static _free_display(): number {
-        const ls = VirtualDisplay._get_lock_files().map((x) => parseInt(x.split('X')[1].split('-')[0]));
+        const ls = VirtualDisplay._get_lock_files().map((x) => parseInt(x.split('X')[1].split('-')[0], 10));
         return ls.length ? Math.max(99, Math.max(...ls) + randomInt(3, 20)) : 99;
     }
 
