@@ -1,5 +1,11 @@
-import { GitHubDownloader, webdl, INSTALL_DIR } from './pkgman.js';
-import { LeakWarning } from './warnings.js';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
+import tags from 'language-tags';
+import type { CityResponse } from 'maxmind';
+import maxmind from 'maxmind';
+import xml2js from 'xml2js';
+
 import {
     InvalidLocale,
     MissingRelease,
@@ -9,12 +15,9 @@ import {
     UnknownTerritory,
 } from './exceptions.js';
 import { validateIP } from './ip.js';
-import tags from 'language-tags';
-import * as fs from 'fs';
-import * as path from 'path';
-import maxmind, { CityResponse } from 'maxmind';
-import xml2js from 'xml2js';
+import { GitHubDownloader, INSTALL_DIR, webdl } from './pkgman.js';
 import { getAsBooleanFromENV } from './utils.js';
+import { LeakWarning } from './warnings.js';
 
 export const ALLOW_GEOIP = true;
 
@@ -22,7 +25,7 @@ class Locale {
     constructor(
         public language: string,
         public region?: string,
-        public script?: string
+        public script?: string,
     ) {}
 
     asString(): string {
@@ -34,7 +37,7 @@ class Locale {
 
     asConfig(): Record<string, string> {
         if (!this.region) {
-            throw new Error("Region is required for config");
+            throw new Error('Region is required for config');
         }
         const data: Record<string, string> = {
             'locale:region': this.region,
@@ -53,14 +56,14 @@ class Geolocation {
         public longitude: number,
         public latitude: number,
         public timezone: string,
-        public accuracy?: number
+        public accuracy?: number,
     ) {}
 
     public asConfig(): Record<string, any> {
         const data: Record<string, any> = {
             'geolocation:longitude': this.longitude,
             'geolocation:latitude': this.latitude,
-            'timezone': this.timezone,
+            timezone: this.timezone,
             ...this.locale.asConfig(),
         };
         if (this.accuracy !== undefined) {
@@ -88,11 +91,11 @@ export function normalizeLocale(locale: string): Locale {
     return new Locale(
         parser.language()?.format() ?? 'en',
         parser.region()?.format(),
-        parser.language()?.script()?.format()
+        parser.language()?.script()?.format(),
     );
 }
 
-export function handleLocale(locale: string, ignoreRegion: boolean = false): Locale {
+export function handleLocale(locale: string, ignoreRegion = false): Locale {
     if (locale.length > 3) {
         return normalizeLocale(locale);
     }
@@ -127,7 +130,7 @@ export function handleLocale(locale: string, ignoreRegion: boolean = false): Loc
 
 export function handleLocales(locales: string | string[], config: Record<string, any>): void {
     if (typeof locales === 'string') {
-        locales = locales.split(',').map(loc => loc.trim());
+        locales = locales.split(',').map((loc) => loc.trim());
     }
 
     const intlLocale = handleLocale(locales[0]);
@@ -137,21 +140,21 @@ export function handleLocales(locales: string | string[], config: Record<string,
         return;
     }
 
-    config['locale:all'] = joinUnique(locales.map(locale => handleLocale(locale, true).asString()));
+    config['locale:all'] = joinUnique(locales.map((locale) => handleLocale(locale, true).asString()));
 }
 
 function joinUnique(seq: string[]): string {
     const seen = new Set<string>();
-    return seq.filter(x => !seen.has(x) && seen.add(x)).join(', ');
+    return seq.filter((x) => !seen.has(x) && seen.add(x)).join(', ');
 }
 
 const MMDB_FILE = path.join(INSTALL_DIR.toString(), 'GeoLite2-City.mmdb');
-const MMDB_REPO = "P3TERX/GeoLite.mmdb";
+const MMDB_REPO = 'P3TERX/GeoLite.mmdb';
 
 class MaxMindDownloader extends GitHubDownloader {
     checkAsset(asset: Record<string, any>): string | null {
-        if (asset['name'].endsWith('-City.mmdb')) {
-            return asset['browser_download_url'];
+        if (asset.name.endsWith('-City.mmdb')) {
+            return asset.browser_download_url;
         }
         return null;
     }
@@ -164,7 +167,7 @@ class MaxMindDownloader extends GitHubDownloader {
 export function geoipAllowed(): void {
     if (!ALLOW_GEOIP) {
         throw new NotInstalledGeoIPExtra(
-            'Please install the geoip extra to use this feature: pip install camoufox[geoip]'
+            'Please install the geoip extra to use this feature: pip install camoufox[geoip]',
         );
     }
 }
@@ -173,7 +176,7 @@ export async function downloadMMDB(): Promise<void> {
     geoipAllowed();
 
     if (getAsBooleanFromENV('PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD', false)) {
-        console.log("Skipping GeoIP database download due to PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD set!");
+        console.log('Skipping GeoIP database download due to PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD set!');
         return;
     }
 
@@ -185,12 +188,12 @@ export async function downloadMMDB(): Promise<void> {
 
 export function removeMMDB(): void {
     if (!fs.existsSync(MMDB_FILE)) {
-        console.log("GeoIP database not found.");
+        console.log('GeoIP database not found.');
         return;
     }
 
     fs.unlinkSync(MMDB_FILE);
-    console.log("GeoIP database removed.");
+    console.log('GeoIP database removed.');
 }
 
 export async function getGeolocation(ip: string): Promise<Geolocation> {
@@ -204,7 +207,7 @@ export async function getGeolocation(ip: string): Promise<Geolocation> {
 
     const resp = reader.get(ip)!;
     const isoCode = resp.country?.iso_code.toUpperCase();
-    const location = resp.location;
+    const { location } = resp;
 
     if (!location?.longitude || !location?.latitude || !location?.time_zone || !isoCode) {
         throw new UnknownIPLocation(`Unknown IP location: ${ip}`);
@@ -216,7 +219,7 @@ export async function getGeolocation(ip: string): Promise<Geolocation> {
         locale,
         location.longitude,
         location.latitude,
-        location.time_zone
+        location.time_zone,
     );
 }
 
@@ -259,8 +262,7 @@ class StatisticalLocaleSelector {
     }
 
     private loadLanguageData(language: string): [string[], number[]] {
-        const territories = this.root.territory.filter((t: any) =>
-            t.languagePopulation.some((lp: any) => lp.$.type === language)
+        const territories = this.root.territory.filter((t: any) => t.languagePopulation.some((lp: any) => lp.$.type === language),
         );
 
         if (!territories.length) {
@@ -277,9 +279,9 @@ class StatisticalLocaleSelector {
             if (region && langPop) {
                 regions.push(region);
                 percentages.push(
-                    asFloat(langPop.$, 'populationPercent') *
-                    asFloat(terr.$, 'literacyPercent') / 10000 *
-                    asFloat(terr.$, 'population')
+                    asFloat(langPop.$, 'populationPercent')
+                    * asFloat(terr.$, 'literacyPercent') / 10000
+                    * asFloat(terr.$, 'population'),
                 );
             }
         }
@@ -293,13 +295,13 @@ class StatisticalLocaleSelector {
 
     private normalizeProbabilities(languages: string[], freq: number[]): [string[], number[]] {
         const total = freq.reduce((a, b) => a + b, 0);
-        return [languages, freq.map(f => f / total)];
+        return [languages, freq.map((f) => f / total)];
     }
 
     private weightedRandomChoice<T>(items: T[], weights: number[]): T {
-        const cumulativeWeights = weights.map((sum => (value: number) => sum += value)(0));
+        const cumulativeWeights = weights.map(((sum) => (value: number) => sum += value)(0));
         const random = Math.random() * cumulativeWeights[cumulativeWeights.length - 1];
-        return items[cumulativeWeights.findIndex(weight => weight > random)];
+        return items[cumulativeWeights.findIndex((weight) => weight > random)];
     }
 
     fromRegion(region: string): Locale {

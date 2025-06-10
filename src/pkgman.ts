@@ -1,9 +1,15 @@
+import { execSync } from 'node:child_process';
+import type { PathLike } from 'node:fs';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import type { Writable } from 'node:stream';
+
+import AdmZip from 'adm-zip';
+import * as yaml from 'js-yaml';
+import ProgressBar from 'progress';
+
 import { CONSTRAINTS } from './__version__.js';
-import * as os from 'os';
-import * as path from 'path';
-import * as fs from 'fs';
-import { execSync } from 'child_process';
-import { PathLike } from 'fs';
 import {
     CamoufoxNotInstalled,
     FileNotFoundError,
@@ -11,23 +17,19 @@ import {
     UnsupportedArchitecture,
     UnsupportedOS,
     UnsupportedVersion,
-} from './exceptions.js' 
-import AdmZip from 'adm-zip';
-import * as yaml from 'js-yaml';
-import ProgressBar from 'progress';
-import { Writable } from 'stream';
+} from './exceptions.js';
 
 const ARCH_MAP: { [key: string]: string } = {
-    'x64': 'x86_64',
-    'ia32': 'i686',
-    'arm64': 'arm64',
-    'arm': 'arm64',
+    x64: 'x86_64',
+    ia32: 'i686',
+    arm64: 'arm64',
+    arm: 'arm64',
 };
 
 const OS_MAP: { [key: string]: 'mac' | 'win' | 'lin' } = {
-    'darwin': 'mac',
-    'linux': 'lin',
-    'win32': 'win',
+    darwin: 'mac',
+    linux: 'lin',
+    win32: 'win',
 };
 
 if (!(process.platform in OS_MAP)) {
@@ -40,15 +42,15 @@ export const INSTALL_DIR: PathLike = userCacheDir('camoufox');
 export const LOCAL_DATA: PathLike = path.join(import.meta.dirname, 'data-files');
 
 export const OS_ARCH_MATRIX: { [key: string]: string[] } = {
-    'win': ['x86_64', 'i686'],
-    'mac': ['x86_64', 'arm64'],
-    'lin': ['x86_64', 'arm64', 'i686'],
+    win: ['x86_64', 'i686'],
+    mac: ['x86_64', 'arm64'],
+    lin: ['x86_64', 'arm64', 'i686'],
 };
 
 const LAUNCH_FILE: { [key: string]: string } = {
-    'win': 'camoufox.exe',
-    'mac': '../MacOS/camoufox',
-    'lin': 'camoufox-bin',
+    win: 'camoufox.exe',
+    mac: '../MacOS/camoufox',
+    lin: 'camoufox-bin',
 };
 
 class Version {
@@ -63,7 +65,7 @@ class Version {
     }
 
     private buildSortedRel(): number[] {
-        const parts = this.release.split('.').map(x => (isNaN(Number(x)) ? x.charCodeAt(0) - 1024 : Number(x)));
+        const parts = this.release.split('.').map((x) => (isNaN(Number(x)) ? x.charCodeAt(0) - 1024 : Number(x)));
         while (parts.length < 5) {
             parts.push(0);
         }
@@ -110,7 +112,6 @@ class Version {
 
 const [VERSION_MIN, VERSION_MAX] = Version.buildMinMax();
 
-
 export class GitHubDownloader {
     githubRepo: string;
     apiUrl: string;
@@ -156,11 +157,11 @@ export class CamoufoxFetcher extends GitHubDownloader {
     _url?: string;
 
     constructor() {
-        super("daijro/camoufox");
+        super('daijro/camoufox');
         this.arch = CamoufoxFetcher.getPlatformArch();
         this.pattern = new RegExp(`camoufox-(.+)-(.+)-${OS_NAME}\\.${this.arch}\\.zip`);
     }
-    
+
     async init() {
         await this.fetchLatest();
     }
@@ -247,28 +248,28 @@ export class CamoufoxFetcher extends GitHubDownloader {
 
     get url(): string {
         if (!this._url) {
-            throw new Error("Url is not available. Make sure to run fetchLatest first.");
+            throw new Error('Url is not available. Make sure to run fetchLatest first.');
         }
         return this._url;
     }
 
     get version(): string {
         if (!this._version_obj || !this._version_obj.version) {
-            throw new Error("Version is not available. Make sure to run fetchLatest first.");
+            throw new Error('Version is not available. Make sure to run fetchLatest first.');
         }
         return this._version_obj.version;
     }
 
     get release(): string {
         if (!this._version_obj) {
-            throw new Error("Release information is not available. Make sure to run the installation first.");
+            throw new Error('Release information is not available. Make sure to run the installation first.');
         }
         return this._version_obj.release;
     }
 
     get verstr(): string {
         if (!this._version_obj) {
-            throw new Error("Version is not available. Make sure to run the installation first.");
+            throw new Error('Version is not available. Make sure to run the installation first.');
         }
         return this._version_obj.fullString;
     }
@@ -277,19 +278,17 @@ export class CamoufoxFetcher extends GitHubDownloader {
 function userCacheDir(appName: string): string {
     if (OS_NAME === 'win') {
         return path.join(os.homedir(), 'AppData', 'Local', appName, appName, 'Cache');
-    } else if (OS_NAME === 'mac') {
+    } if (OS_NAME === 'mac') {
         return path.join(os.homedir(), 'Library', 'Caches', appName);
-    } else {
-        return path.join(os.homedir(), '.cache', appName);
     }
+    return path.join(os.homedir(), '.cache', appName);
 }
 
 export function installedVerStr(): string {
     return Version.fromPath().fullString;
 }
 
-
-export function camoufoxPath(downloadIfMissing: boolean = true): PathLike {
+export function camoufoxPath(downloadIfMissing = true): PathLike {
     // Ensure the directory exists and is not empty
     if (!fs.existsSync(INSTALL_DIR) || fs.readdirSync(INSTALL_DIR).length === 0) {
         if (!downloadIfMissing) {
@@ -297,10 +296,8 @@ export function camoufoxPath(downloadIfMissing: boolean = true): PathLike {
         }
     } else if (fs.existsSync(INSTALL_DIR) && Version.isSupportedPath(INSTALL_DIR)) {
         return INSTALL_DIR;
-    } else {
-        if (!downloadIfMissing) {
-            throw new UnsupportedVersion("Camoufox executable is outdated.");
-        }
+    } else if (!downloadIfMissing) {
+        throw new UnsupportedVersion('Camoufox executable is outdated.');
     }
 
     // Install and recheck
@@ -309,7 +306,6 @@ export function camoufoxPath(downloadIfMissing: boolean = true): PathLike {
     return INSTALL_DIR;
 }
 
-
 export function getPath(file: string): string {
     if (OS_NAME === 'mac') {
         return path.resolve(camoufoxPath().toString(), 'Camoufox.app', 'Contents', 'Resources', file);
@@ -317,12 +313,11 @@ export function getPath(file: string): string {
     return path.join(camoufoxPath().toString(), file);
 }
 
-
 export function launchPath(): string {
     const launchPath = getPath(LAUNCH_FILE[OS_NAME]);
     if (!fs.existsSync(launchPath)) {
         throw new CamoufoxNotInstalled(
-            `Camoufox is not installed at ${camoufoxPath()}. Please run \`camoufox fetch\` to install.`
+            `Camoufox is not installed at ${camoufoxPath()}. Please run \`camoufox fetch\` to install.`,
         );
     }
     return launchPath;
@@ -330,8 +325,8 @@ export function launchPath(): string {
 
 export async function webdl(
     url: string,
-    desc: string = '',
-    bar: boolean = true,
+    desc = '',
+    bar = true,
     buffer: Writable | null = null,
 ): Promise<Buffer> {
     const response = await fetch(url);
@@ -353,7 +348,7 @@ export async function webdl(
             chunks.push(chunk);
         }
         if (progressBar) {
-            progressBar.tick(chunk.length, "X");
+            progressBar.tick(chunk.length, 'X');
         }
     }
 
@@ -361,12 +356,11 @@ export async function webdl(
     return fileBuffer;
 }
 
-
 export async function unzip(
     zipFile: Buffer,
     extractPath: string,
     desc?: string,
-    bar: boolean = true
+    bar = true,
 ): Promise<void> {
     const zip = new AdmZip(zipFile);
     const zipEntries = zip.getEntries();

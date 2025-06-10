@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 
-import { DefaultAddons, maybeDownloadAddons } from './addons.js';
-import { ALLOW_GEOIP, downloadMMDB, removeMMDB } from './locale.js';
-import { INSTALL_DIR, CamoufoxFetcher, installedVerStr } from './pkgman.js';
+import { existsSync, rmSync } from 'node:fs';
+
 import { Command } from 'commander';
 
-import { Camoufox } from './sync_api.js';
-import { existsSync, rmSync } from 'fs';
-import { getAsBooleanFromENV } from './utils.js';
+import { DefaultAddons, maybeDownloadAddons } from './addons.js';
+import { ALLOW_GEOIP, downloadMMDB, removeMMDB } from './locale.js';
+import { CamoufoxFetcher, INSTALL_DIR, installedVerStr } from './pkgman.js';
 import { launchServer } from './server.js';
+import { Camoufox } from './sync_api.js';
+import { getAsBooleanFromENV } from './utils.js';
 
 class CamoufoxUpdate extends CamoufoxFetcher {
     currentVerStr: string | null;
@@ -35,7 +36,7 @@ class CamoufoxUpdate extends CamoufoxFetcher {
 
     isUpdateNeeded(): boolean {
         if (getAsBooleanFromENV('PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD', false)) {
-            console.log("Skipping browser download / update check due to PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD set!");
+            console.log('Skipping browser download / update check due to PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD set!');
             return false;
         }
 
@@ -44,13 +45,13 @@ class CamoufoxUpdate extends CamoufoxFetcher {
 
     async update(): Promise<void> {
         if (!this.isUpdateNeeded()) {
-            console.log("Camoufox binaries up to date!");
+            console.log('Camoufox binaries up to date!');
             console.log(`Current version: v${this.currentVerStr}`);
             return;
         }
 
         if (this.currentVerStr !== null) {
-            console.log(`Updating Camoufox binaries from v${this.currentVerStr} => v${this.verstr}`, "yellow");
+            console.log(`Updating Camoufox binaries from v${this.currentVerStr} => v${this.verstr}`, 'yellow');
         } else {
             console.log(`Fetching Camoufox binaries...`);
         }
@@ -62,7 +63,7 @@ class CamoufoxUpdate extends CamoufoxFetcher {
             return false;
         }
         await rmSync(INSTALL_DIR, { recursive: true, force: true });
-        console.log("Camoufox binaries removed!");
+        console.log('Camoufox binaries removed!');
         return true;
     }
 }
@@ -85,7 +86,7 @@ program
     .action(async () => {
         const updater = await CamoufoxUpdate.create();
         if (!await updater.cleanup()) {
-            console.log("Camoufox binaries not found!", "red");
+            console.log('Camoufox binaries not found!', 'red');
         }
         removeMMDB();
     });
@@ -94,10 +95,10 @@ program
     .command('test')
     .argument('[url]', 'URL to open', null)
     .action(async (url) => {
-        const browser = await Camoufox({ 
-            headless: false, 
-            env: process.env as Record<string, string>, 
-            config: { showcursor: true }, 
+        const browser = await Camoufox({
+            headless: false,
+            env: process.env as Record<string, string>,
+            config: { showcursor: true },
             humanize: 0.5,
             geoip: true,
         });
@@ -132,22 +133,22 @@ program
             const pkgVersion = require('pkg-version');
             console.log(`Pip package:\tv${pkgVersion('camoufox')}`);
         } catch (error) {
-            console.log("Pip package:\tNot installed!", "red");
+            console.log('Pip package:\tNot installed!', 'red');
         }
 
         const updater = await CamoufoxUpdate.create();
         const binVer = updater.currentVerStr;
 
         if (!binVer) {
-            console.log("Camoufox:\tNot downloaded!", "red");
+            console.log('Camoufox:\tNot downloaded!', 'red');
             return;
         }
-        console.log(`Camoufox:\tv${binVer} `, "green", false);
+        console.log(`Camoufox:\tv${binVer} `, 'green', false);
 
         if (updater.isUpdateNeeded()) {
-            console.log(`(Latest supported: v${updater.verstr})`, "red");
+            console.log(`(Latest supported: v${updater.verstr})`, 'red');
         } else {
-            console.log("(Up to date!)", "yellow");
+            console.log('(Up to date!)', 'yellow');
         }
     });
 

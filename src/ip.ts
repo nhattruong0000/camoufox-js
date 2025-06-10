@@ -19,7 +19,7 @@ export class ProxyHelper {
         return {
             schema: proxyMatch[1] || 'http',
             url: proxyMatch[2],
-            port: proxyMatch[3]
+            port: proxyMatch[3],
         };
     }
 
@@ -70,12 +70,12 @@ export function validateIP(ip: string): void {
 
 export async function publicIP(proxy?: string): Promise<string> {
     const URLS = [
-        "https://api.ipify.org",
-        "https://checkip.amazonaws.com",
-        "https://ipinfo.io/ip",
-        "https://icanhazip.com",
-        "https://ifconfig.co/ip",
-        "https://ipecho.net/plain",
+        'https://api.ipify.org',
+        'https://checkip.amazonaws.com',
+        'https://ipinfo.io/ip',
+        'https://icanhazip.com',
+        'https://ifconfig.co/ip',
+        'https://ipecho.net/plain',
     ];
 
     const errors = [];
@@ -85,23 +85,23 @@ export async function publicIP(proxy?: string): Promise<string> {
             const impit = new Impit({
                 proxyUrl: proxy,
                 timeout: 5000,
-            })
+            });
             const response = await impit.fetch(url);
 
             if (!response.ok) {
                 continue;
             }
 
-            const ip = (await response.text()).trim()
+            const ip = (await response.text()).trim();
             validateIP(ip);
             return ip;
         } catch (error) {
             errors.push(error);
-            if ( process.env.CAMOUFOX_DEBUG ) {
+            if (process.env.CAMOUFOX_DEBUG) {
                 console.warn(new InvalidProxy(`camoufox-js(warn): Failed to fetch public proxy IP from ${url}, retrying with another URL...`, { cause: error }));
             }
         }
     }
 
-    throw new InvalidIP("Failed to get a public proxy IP address from any API endpoint.", { cause: errors });
+    throw new InvalidIP('Failed to get a public proxy IP address from any API endpoint.', { cause: errors });
 }

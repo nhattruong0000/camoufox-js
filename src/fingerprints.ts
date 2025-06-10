@@ -1,6 +1,9 @@
 import { join } from 'node:path';
+
+import type { Fingerprint, FingerprintGeneratorOptions, ScreenFingerprint } from 'fingerprint-generator';
+import { FingerprintGenerator } from 'fingerprint-generator';
+
 import { loadYaml } from './pkgman.js';
-import { Fingerprint, FingerprintGenerator, FingerprintGeneratorOptions, ScreenFingerprint } from 'fingerprint-generator';
 
 export const SUPPORTED_OS = ['linux', 'macos', 'windows'] as const;
 
@@ -22,7 +25,7 @@ function _castToProperties(
     camoufoxData: Record<string, any>,
     castEnum: Record<string, any>,
     bfDict: Record<string, any>,
-    ffVersion?: string
+    ffVersion?: string,
 ): void {
     for (let [key, data] of Object.entries(bfDict)) {
         if (!data) continue;
@@ -32,7 +35,7 @@ function _castToProperties(
             _castToProperties(camoufoxData, typeKey, data, ffVersion);
             continue;
         }
-        if (typeKey.startsWith("screen.") && typeof data === 'number' && data < 0) {
+        if (typeKey.startsWith('screen.') && typeof data === 'number' && data < 0) {
             data = 0;
         }
         if (ffVersion && typeof data === 'string') {
@@ -44,7 +47,7 @@ function _castToProperties(
 
 function handleScreenXY(camoufoxData: Record<string, any>, fpScreen: ScreenFingerprint): void {
     if ('window.screenY' in camoufoxData) return;
-    let screenX = fpScreen.screenX;
+    const { screenX } = fpScreen;
     if (!screenX) {
         camoufoxData['window.screenX'] = 0;
         camoufoxData['window.screenY'] = 0;
@@ -54,7 +57,7 @@ function handleScreenXY(camoufoxData: Record<string, any>, fpScreen: ScreenFinge
         camoufoxData['window.screenY'] = screenX;
         return;
     }
-    let screenY = fpScreen.availHeight - fpScreen.outerHeight;
+    const screenY = fpScreen.availHeight - fpScreen.outerHeight;
     if (screenY === 0) {
         camoufoxData['window.screenY'] = 0;
     } else if (screenY > 0) {
@@ -66,7 +69,7 @@ function handleScreenXY(camoufoxData: Record<string, any>, fpScreen: ScreenFinge
 
 export function fromBrowserforge(fingerprint: Fingerprint, ffVersion?: string): Record<string, any> {
     const camoufoxData: Record<string, any> = {};
-    _castToProperties(camoufoxData, BROWSERFORGE_DATA, { ... fingerprint }, ffVersion);
+    _castToProperties(camoufoxData, BROWSERFORGE_DATA, { ...fingerprint }, ffVersion);
     handleScreenXY(camoufoxData, fingerprint.screen);
     return camoufoxData;
 }
@@ -94,4 +97,3 @@ export function generateFingerprint(window?: [number, number], config?: Partial<
     }
     return FP_GENERATOR.getFingerprint(config).fingerprint;
 }
-

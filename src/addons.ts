@@ -1,15 +1,16 @@
+import fs from 'node:fs';
+import { join } from 'node:path';
+
 import { InvalidAddonPath } from './exceptions.js';
 import { getPath, unzip, webdl } from './pkgman.js';
-import fs from 'fs';
-import { join } from 'path';
 import { getAsBooleanFromENV } from './utils.js';
 
 export const DefaultAddons = {
     /**
      * Default addons to be downloaded
      */
-    UBO: "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi"
-}
+    UBO: 'https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi',
+};
 
 export function confirmPaths(paths: string[]): void {
     /**
@@ -21,14 +22,14 @@ export function confirmPaths(paths: string[]): void {
         }
         if (!fs.existsSync(join(path, 'manifest.json'))) {
             throw new InvalidAddonPath(
-                'manifest.json is missing. Addon path must be a path to an extracted addon.'
+                'manifest.json is missing. Addon path must be a path to an extracted addon.',
             );
         }
     }
 }
 
 export function addDefaultAddons(
-    addonsList: string[], excludeList: (keyof typeof DefaultAddons)[] = []
+    addonsList: string[], excludeList: (keyof typeof DefaultAddons)[] = [],
 ): void {
     // TODO - enable addons
     /**
@@ -51,7 +52,7 @@ export async function downloadAndExtract(url: string, extractPath: string, name:
  * Returns a path to the addon
  */
 function getAddonPath(addonName: string): string {
-    return getPath(join("addons", addonName));
+    return getPath(join('addons', addonName));
 }
 
 /**
@@ -59,11 +60,11 @@ function getAddonPath(addonName: string): string {
  * Skips downloading if the addon is already downloaded
  */
 export function maybeDownloadAddons(
-    addons: Record<string, string>, addonsList: string[] = []
+    addons: Record<string, string>, addonsList: string[] = [],
 ): void {
     if (getAsBooleanFromENV('PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD', false)) {
-        console.log("Skipping addon download due to PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD set!");
-        return
+        console.log('Skipping addon download due to PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD set!');
+        return;
     }
 
     for (const addonName in addons) {

@@ -1,4 +1,5 @@
-import { join } from 'path';
+import { join } from 'node:path';
+
 import { loadYaml } from './pkgman.js';
 
 const WARNINGS_DATA = loadYaml(join(import.meta.dirname, 'data-files', 'warnings.yml'));

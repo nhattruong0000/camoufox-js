@@ -1,15 +1,16 @@
+import type { ChildProcess } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
+// import { globSync } from 'glob';
+import { randomInt } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+
 import {
     CannotExecuteXvfb,
     CannotFindXvfb,
     VirtualDisplayNotSupported,
 } from './exceptions.js';
-
 import { OS_NAME } from './pkgman.js';
-import { execFileSync, spawn, ChildProcess } from 'child_process';
-import { existsSync } from 'fs';
-import { tmpdir } from 'os';
-// import { globSync } from 'glob';
-import { randomInt } from 'crypto';
 // import { Lock } from 'async-mutex';
 
 export class VirtualDisplay {
@@ -18,32 +19,32 @@ export class VirtualDisplay {
     private _display: number | null = null;
     // private _lock = new Lock();
 
-    constructor(debug: boolean = false) {
+    constructor(debug = false) {
         this.debug = debug;
     }
 
     private get xvfb_args(): string[] {
         return [
-            "-screen", "0", "1x1x24",
-            "-ac",
-            "-nolisten", "tcp",
-            "-extension", "RENDER",
-            "+extension", "GLX",
-            "-extension", "COMPOSITE",
-            "-extension", "XVideo",
-            "-extension", "XVideo-MotionCompensation",
-            "-extension", "XINERAMA",
-            "-shmem",
-            "-fp", "built-ins",
-            "-nocursor",
-            "-br",
+            '-screen', '0', '1x1x24',
+            '-ac',
+            '-nolisten', 'tcp',
+            '-extension', 'RENDER',
+            '+extension', 'GLX',
+            '-extension', 'COMPOSITE',
+            '-extension', 'XVideo',
+            '-extension', 'XVideo-MotionCompensation',
+            '-extension', 'XINERAMA',
+            '-shmem',
+            '-fp', 'built-ins',
+            '-nocursor',
+            '-br',
         ];
     }
 
     private get xvfb_path(): string {
         const path = execFileSync('which', ['Xvfb']).toString().trim();
         if (!path) {
-            throw new CannotFindXvfb("Please install Xvfb to use headless mode.");
+            throw new CannotFindXvfb('Please install Xvfb to use headless mode.');
         }
         if (!existsSync(path) || !execFileSync('test', ['-x', path])) {
             throw new CannotExecuteXvfb(`I do not have permission to execute Xvfb: ${path}`);
@@ -69,11 +70,11 @@ export class VirtualDisplay {
         VirtualDisplay.assert_linux();
 
         // this._lock.runExclusive(() => {
-            if (!this.proc) {
-                this.execute_xvfb();
-            } else if (this.debug) {
-                console.log(`Using virtual display: ${this.display}`);
-            }
+        if (!this.proc) {
+            this.execute_xvfb();
+        } else if (this.debug) {
+            console.log(`Using virtual display: ${this.display}`);
+        }
         // });
 
         return `:${this.display}`;
@@ -81,12 +82,12 @@ export class VirtualDisplay {
 
     public kill(): void {
         // this._lock.runExclusive(() => {
-            if (this.proc && !this.proc.killed) {
-                if (this.debug) {
-                    console.log('Terminating virtual display:', this.display);
-                }
-                this.proc.kill();
+        if (this.proc && !this.proc.killed) {
+            if (this.debug) {
+                console.log('Terminating virtual display:', this.display);
             }
+            this.proc.kill();
+        }
         // });
     }
 
@@ -101,7 +102,7 @@ export class VirtualDisplay {
     }
 
     private static _free_display(): number {
-        const ls = VirtualDisplay._get_lock_files().map(x => parseInt(x.split("X")[1].split("-")[0]));
+        const ls = VirtualDisplay._get_lock_files().map((x) => parseInt(x.split('X')[1].split('-')[0]));
         return ls.length ? Math.max(99, Math.max(...ls) + randomInt(3, 20)) : 99;
     }
 
@@ -114,7 +115,7 @@ export class VirtualDisplay {
 
     private static assert_linux(): void {
         if (OS_NAME !== 'lin') {
-            throw new VirtualDisplayNotSupported("Virtual display is only supported on Linux.");
+            throw new VirtualDisplayNotSupported('Virtual display is only supported on Linux.');
         }
     }
 }

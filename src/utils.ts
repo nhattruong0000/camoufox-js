@@ -2,22 +2,24 @@
 // from screeninfo import get_monitors
 // from ua_parser import user_agent_parser
 
-import path from 'path';
-import { DefaultAddons, addDefaultAddons, confirmPaths } from './addons.js';
+import type { PathLike } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import path, { join } from 'node:path';
+
+import type { Fingerprint, FingerprintGeneratorOptions } from 'fingerprint-generator';
+import type { LaunchOptions as PlaywrightLaunchOptions } from 'playwright-core';
+import { UAParser } from 'ua-parser-js';
+
+import type { DefaultAddons } from './addons.js';
+import { addDefaultAddons, confirmPaths } from './addons.js';
 import { InvalidOS, InvalidPropertyType, NonFirefoxFingerprint, UnknownProperty } from './exceptions.js';
 import { fromBrowserforge, generateFingerprint, SUPPORTED_OS } from './fingerprints.js';
 import { publicIP, validIPv4, validIPv6 } from './ip.js';
 import { geoipAllowed, getGeolocation, handleLocales } from './locale.js';
-import { OS_NAME, getPath, installedVerStr, launchPath } from './pkgman.js';
-import { VirtualDisplay } from './virtdisplay.js';
+import { getPath, installedVerStr, launchPath, OS_NAME } from './pkgman.js';
+import type { VirtualDisplay } from './virtdisplay.js';
 import { LeakWarning } from './warnings.js';
 import { sampleWebGL } from './webgl/sample.js';
-import { PathLike, readFileSync } from 'fs';
-import { join } from 'path';
-import { UAParser } from 'ua-parser-js';
-import { Fingerprint, FingerprintGeneratorOptions } from 'fingerprint-generator';
-
-import { LaunchOptions as PlaywrightLaunchOptions } from 'playwright-core';
 
 type Screen = FingerprintGeneratorOptions['screen'];
 
@@ -57,7 +59,7 @@ function getEnvVars(configMap: ConfigMap, userAgentOS: string): EnvVars {
 
     if (OS_NAME === 'lin') {
         const fontconfigPath = getPath(path.join('fontconfig', userAgentOS));
-        envVars['FONTCONFIG_PATH'] = fontconfigPath;
+        envVars.FONTCONFIG_PATH = fontconfigPath;
     }
 
     return envVars;
@@ -65,10 +67,8 @@ function getEnvVars(configMap: ConfigMap, userAgentOS: string): EnvVars {
 
 export function getAsBooleanFromENV(name: string, defaultValue?: boolean | undefined): boolean {
     const value = process.env[name];
-    if (value === 'false' || value === '0')
-        return false;
-    if (value)
-        return true;
+    if (value === 'false' || value === '0') return false;
+    if (value) return true;
     return !!defaultValue;
 }
 
@@ -94,7 +94,6 @@ function loadProperties(filePath?: PathLike): Record<string, string> {
         return acc;
     }, {} as Record<string, string>);
 }
-
 
 interface ConfigMap {
     [key: string]: string;
@@ -151,12 +150,12 @@ function determineUAOS(userAgent: string): 'mac' | 'win' | 'lin' {
     const parser = new UAParser(userAgent);
     const parsedUA = parser.getOS().name;
     if (!parsedUA) {
-        throw new Error("Could not determine OS from user agent");
+        throw new Error('Could not determine OS from user agent');
     }
-    if (parsedUA.startsWith("Mac")) {
+    if (parsedUA.startsWith('Mac')) {
         return 'mac';
     }
-    if (parsedUA.startsWith("Windows")) {
+    if (parsedUA.startsWith('Windows')) {
         return 'win';
     }
     return 'lin';
@@ -237,9 +236,9 @@ function setInto(target: Record<string, any>, key: string, value: any): void {
 }
 
 function isDomainSet(config: Record<string, any>, ...properties: string[]): boolean {
-    return properties.some(prop => {
+    return properties.some((prop) => {
         if (prop.endsWith('.') || prop.endsWith(':')) {
-            return Object.keys(config).some(key => key.startsWith(prop));
+            return Object.keys(config).some((key) => key.startsWith(prop));
         }
         return prop in config;
     });
@@ -282,7 +281,6 @@ async function asyncAttachVD(browser: any, virtualDisplay?: VirtualDisplay): Pro
     return browser;
 }
 
-
 export function syncAttachVD(browser: any, virtualDisplay?: VirtualDisplay | null): any {
     /**
      * Attaches the virtual display to the sync browser cleanup
@@ -304,7 +302,6 @@ export function syncAttachVD(browser: any, virtualDisplay?: VirtualDisplay | nul
 
     return browser;
 }
-
 
 export interface LaunchOptions {
     /** Operating system to use for the fingerprint generation.
@@ -413,7 +410,7 @@ export interface LaunchOptions {
 
 /**
  * Convert a Playwright proxy string to a URL object.
- * 
+ *
  * Implementation from https://github.com/microsoft/playwright/blob/3873b72ac1441ca691f7594f0ed705bd84518f93/packages/playwright-core/src/server/browserContext.ts#L737-L747
  */
 function getProxyUrl(proxy: PlaywrightLaunchOptions['proxy'] | string): URL | null {
@@ -426,14 +423,13 @@ function getProxyUrl(proxy: PlaywrightLaunchOptions['proxy'] | string): URL | nu
     const { server, username, password } = proxy;
     let url;
     try {
-      // new URL('127.0.0.1:8080') throws
-      // new URL('localhost:8080') fails to parse host or protocol
-      // In both of these cases, we need to try re-parse URL with `http://` prefix.
-      url = new URL(server);
-      if (!url.host || !url.protocol)
-        url = new URL('http://' + server);
+        // new URL('127.0.0.1:8080') throws
+        // new URL('localhost:8080') fails to parse host or protocol
+        // In both of these cases, we need to try re-parse URL with `http://` prefix.
+        url = new URL(server);
+        if (!url.host || !url.protocol) url = new URL(`http://${server}`);
     } catch (e) {
-      url = new URL('http://' + server);
+        url = new URL(`http://${server}`);
     }
 
     if (username) url.username = username;
@@ -508,7 +504,7 @@ export async function launchOptions({
 
     // Handle virtual display
     if (virtual_display) {
-        env['DISPLAY'] = virtual_display;
+        env.DISPLAY = virtual_display;
     }
 
     // Warn the user for manual config settings
@@ -529,7 +525,7 @@ export async function launchOptions({
     // Confirm all addon paths are valid
     if (addons.length > 0) {
         confirmPaths(addons);
-        config['addons'] = addons;
+        config.addons = addons;
     }
 
     // Get the Firefox version
@@ -548,7 +544,7 @@ export async function launchOptions({
             {
                 screen: screen || getScreenCons(headless || 'DISPLAY' in env),
                 operatingSystems,
-            }
+            },
         );
     } else {
         // Or use the one passed by the user
@@ -570,7 +566,7 @@ export async function launchOptions({
 
     // Update fonts list
     if (fonts) {
-        config['fonts'] = fonts;
+        config.fonts = fonts;
     }
 
     if (custom_fonts_only) {
@@ -593,11 +589,11 @@ export async function launchOptions({
     const proxyUrl = getProxyUrl(proxy);
 
     // Set geolocation
-    if (geoip){
-        geoipAllowed()
+    if (geoip) {
+        geoipAllowed();
 
         // Find the user's IP address
-        geoip = await publicIP(proxyUrl?.href)
+        geoip = await publicIP(proxyUrl?.href);
 
         // Spoof WebRTC if not blocked
         if (!block_webrtc) {
@@ -609,16 +605,16 @@ export async function launchOptions({
             }
         }
 
-        const geolocation = await getGeolocation(geoip)
-        config = { ...config, ...geolocation.asConfig() }
+        const geolocation = await getGeolocation(geoip);
+        config = { ...config, ...geolocation.asConfig() };
     }
 
     // Raise a warning when a proxy is being used without spoofing geolocation.
     // This is a very bad idea; the warning cannot be ignored with i_know_what_im_doing.
     if (
-        proxyUrl &&
-        !proxyUrl.hostname.includes('localhost') &&
-        !isDomainSet(config, 'geolocation:')
+        proxyUrl
+        && !proxyUrl.hostname.includes('localhost')
+        && !isDomainSet(config, 'geolocation:')
     ) {
         LeakWarning.warn('proxy_without_geoip');
     }
@@ -684,31 +680,31 @@ export async function launchOptions({
     mergeInto(
         config,
         {
-            'canvas:aaOffset': Math.floor(Math.random() * 101) - 50,  // nosec
+            'canvas:aaOffset': Math.floor(Math.random() * 101) - 50, // nosec
             'canvas:aaCapOffset': true,
         },
     );
 
     // Cache previous pages, requests, etc (uses more memory)
     if (enable_cache) {
-        mergeInto(firefox_user_prefs, CACHE_PREFS)
+        mergeInto(firefox_user_prefs, CACHE_PREFS);
     }
 
     // Print the config if debug is enabled
     if (debug) {
-        console.debug('[DEBUG] Config:')
-        console.debug(config)
+        console.debug('[DEBUG] Config:');
+        console.debug(config);
     }
 
     // Validate the config
-    validateConfig(config, executable_path)
+    validateConfig(config, executable_path);
 
-    //Prepare environment variables to pass to Camoufox
+    // Prepare environment variables to pass to Camoufox
     const env_vars = {
         ...getEnvVars(config, targetOS),
         ...process.env,
-    }
-    
+    };
+
     // Prepare the executable path
     if (executable_path) {
         executable_path = executable_path.toString();
@@ -717,17 +713,17 @@ export async function launchOptions({
     }
 
     const out: PlaywrightLaunchOptions = {
-        "executablePath": executable_path,
-        "args": args,
-        "env": env_vars as any,
-        "firefoxUserPrefs": firefox_user_prefs,
-        "proxy": proxyUrl ? {
+        executablePath: executable_path,
+        args,
+        env: env_vars as any,
+        firefoxUserPrefs: firefox_user_prefs,
+        proxy: proxyUrl ? {
             server: proxyUrl.origin,
             username: proxyUrl.username,
             password: proxyUrl.password,
-            bypass: typeof proxy === 'string' ? undefined : proxy?.bypass, 
+            bypass: typeof proxy === 'string' ? undefined : proxy?.bypass,
         } : undefined,
-        "headless": headless,
+        headless,
         ...launch_options,
     };
 

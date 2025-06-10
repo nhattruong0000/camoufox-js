@@ -1,10 +1,13 @@
-import { OS_ARCH_MATRIX } from '../pkgman.js';
 import path from 'node:path';
+
 import sqlite from 'sqlite3';
+
+import { OS_ARCH_MATRIX } from '../pkgman.js';
+
 const { Database } = sqlite;
 
 // Get database path relative to this file
-const DB_PATH = path.join(import.meta.dirname, '..' , 'data-files', 'webgl_data.db');
+const DB_PATH = path.join(import.meta.dirname, '..', 'data-files', 'webgl_data.db');
 
 interface WebGLData {
     vendor: string;
@@ -52,15 +55,15 @@ export async function sampleWebGL(os: 'win' | 'mac' | 'lin', vendor?: string, re
                             reject(err);
                             return;
                         }
-                        reject(new Error(`Vendor "${vendor}" and renderer "${renderer}" combination not valid for ${os}. Possible pairs: ${pairs.map(pair => `${pair.vendor}, ${pair.renderer}`).join(', ')}`));
+                        reject(new Error(`Vendor "${vendor}" and renderer "${renderer}" combination not valid for ${os}. Possible pairs: ${pairs.map((pair) => `${pair.vendor}, ${pair.renderer}`).join(', ')}`));
                     });
                     return;
                 }
                 resolve(JSON.parse(result.data));
             } else {
-                const dataStrs = rows.map(row => row.data);
-                const probs = rows.map(row => row[os]);
-                const probsArray = probs.map(p => p / probs.reduce((a, b) => a + b, 0));
+                const dataStrs = rows.map((row) => row.data);
+                const probs = rows.map((row) => row[os]);
+                const probsArray = probs.map((p) => p / probs.reduce((a, b) => a + b, 0));
                 function weightedRandomChoice(weights: number[]): number {
                     const sum = weights.reduce((acc, weight) => acc + weight, 0);
                     const threshold = Math.random() * sum;
@@ -86,7 +89,7 @@ export async function sampleWebGL(os: 'win' | 'mac' | 'lin', vendor?: string, re
 }
 
 interface PossiblePairs {
-    [key: string]: Array<{ vendor: string, renderer: string }>;
+    [key: string]: { vendor: string, renderer: string }[];
 }
 
 export async function getPossiblePairs(): Promise<PossiblePairs> {
@@ -97,7 +100,7 @@ export async function getPossiblePairs(): Promise<PossiblePairs> {
         const osTypes = Object.keys(OS_ARCH_MATRIX);
         let remaining = osTypes.length;
 
-        osTypes.forEach(os_type => {
+        osTypes.forEach((os_type) => {
             db.all(
                 `SELECT DISTINCT vendor, renderer FROM webgl_fingerprints WHERE ${os_type} > 0 ORDER BY ${os_type} DESC`,
                 [],
@@ -113,7 +116,7 @@ export async function getPossiblePairs(): Promise<PossiblePairs> {
                     if (remaining === 0) {
                         resolve(result);
                     }
-                }
+                },
             );
         });
     }).finally(() => {
