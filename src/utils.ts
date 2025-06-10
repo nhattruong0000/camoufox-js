@@ -123,9 +123,9 @@ interface EnvVars {
 
 function validateConfig(
   configMap: Record<string, string>,
-  path?: PathLike,
+  propertiesPath?: PathLike,
 ): void {
-  const propertyTypes = loadProperties(path);
+  const propertyTypes = loadProperties(propertiesPath);
 
   for (const [key, value] of Object.entries(configMap)) {
     const expectedType = propertyTypes[key];
@@ -495,7 +495,7 @@ export async function launchOptions({
   geoip,
   humanize,
   locale,
-  addons,
+  addons: customAddons,
   fonts,
   custom_fonts_only,
   exclude_addons,
@@ -523,9 +523,8 @@ export async function launchOptions({
   if (headless === undefined) {
     headless = false;
   }
-  if (!addons) {
-    addons = [];
-  }
+
+  const addons = customAddons ?? [];
 
   const firefoxUserPrefs = firefox_user_prefs ?? {};
 
@@ -558,7 +557,7 @@ export async function launchOptions({
   // Confirm all addon paths are valid
   if (addons.length > 0) {
     confirmPaths(addons);
-    config.addons = addons;
+    config.addons = customAddons;
   }
 
   // Get the Firefox version
@@ -744,7 +743,7 @@ export async function launchOptions({
   const out: PlaywrightLaunchOptions = {
     executablePath,
     args,
-    env: env_vars,
+    env: env_vars as any,
     firefoxUserPrefs,
     proxy: proxyUrl
       ? {

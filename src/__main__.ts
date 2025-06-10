@@ -81,7 +81,7 @@ program.command("fetch").action(async () => {
   if (ALLOW_GEOIP) {
     await downloadMMDB();
   }
-  maybeDownloadAddons(DefaultAddons);
+  await maybeDownloadAddons(DefaultAddons);
 });
 
 program.command("remove").action(async () => {

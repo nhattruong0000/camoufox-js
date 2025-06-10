@@ -21,6 +21,116 @@ import { LeakWarning } from "./warnings.js";
 
 export const ALLOW_GEOIP = true;
 
+class StatisticalLocaleSelector {
+  private root: any;
+  private static instance: StatisticalLocaleSelector | null = null;
+
+  public static async get() {
+    if (this.instance === null) {
+      this.instance = new StatisticalLocaleSelector();
+      await this.instance.loadUnicodeInfo();
+    }
+
+    return this.instance;
+  }
+
+  private async loadUnicodeInfo() {
+    this.root = await getUnicodeInfo();
+  }
+
+  private loadTerritoryData(isoCode: string): [string[], number[]] {
+    const territory = this.root.territoryInfo.territory.find(
+      (t: any) => t.$.type === isoCode,
+    );
+    if (!territory) {
+      throw new UnknownTerritory(`Unknown territory: ${isoCode}`);
+    }
+
+    const langPopulations = territory.languagePopulation;
+    if (!langPopulations) {
+      throw new Error(`No language data found for region: ${isoCode}`);
+    }
+
+    const languages = langPopulations.map((lang: any) => lang.$.type);
+    const percentages = langPopulations.map((lang: any) =>
+      asFloat(lang.$, "populationPercent"),
+    );
+
+    return this.normalizeProbabilities(languages, percentages);
+  }
+
+  private loadLanguageData(language: string): [string[], number[]] {
+    const territories = this.root.territory.filter((t: any) =>
+      t.languagePopulation.some((lp: any) => lp.$.type === language),
+    );
+
+    if (!territories.length) {
+      throw new UnknownLanguage(
+        `No region data found for language: ${language}`,
+      );
+    }
+
+    const regions: string[] = [];
+    const percentages: number[] = [];
+
+    for (const terr of territories) {
+      const region = terr.$.type;
+      const langPop = terr.languagePopulation.find(
+        (lp: any) => lp.$.type === language,
+      );
+
+      if (region && langPop) {
+        regions.push(region);
+        percentages.push(
+          ((asFloat(langPop.$, "populationPercent") *
+            asFloat(terr.$, "literacyPercent")) /
+            10000) *
+            asFloat(terr.$, "population"),
+        );
+      }
+    }
+
+    if (!regions.length) {
+      throw new Error(`No valid region data found for language: ${language}`);
+    }
+
+    return this.normalizeProbabilities(regions, percentages);
+  }
+
+  private normalizeProbabilities(
+    languages: string[],
+    freq: number[],
+  ): [string[], number[]] {
+    const total = freq.reduce((a, b) => a + b, 0);
+    return [languages, freq.map((f) => f / total)];
+  }
+
+  private weightedRandomChoice<T>(items: T[], weights: number[]): T {
+    const cumulativeWeights = weights.map((_, i, a) => {
+      return a.slice(0, i + 1).reduce((sum, weight) => sum + weight, 0);
+    });
+
+    const random =
+      Math.random() * cumulativeWeights[cumulativeWeights.length - 1];
+    return items[cumulativeWeights.findIndex((weight) => weight > random)];
+  }
+
+  fromRegion(region: string): Locale {
+    const [languages, probabilities] = this.loadTerritoryData(region);
+    const language = this.weightedRandomChoice(
+      languages,
+      probabilities,
+    ).replace("_", "-");
+    return normalizeLocale(`${language}-${region}`);
+  }
+
+  fromLanguage(language: string): Locale {
+    const [regions, probabilities] = this.loadLanguageData(language);
+    const region = this.weightedRandomChoice(regions, probabilities);
+    return normalizeLocale(`${language}-${region}`);
+  }
+}
+
 class Locale {
   constructor(
     public language: string,
@@ -249,114 +359,4 @@ async function getUnicodeInfo(): Promise<any> {
 
 function asFloat(element: any, attr: string): number {
   return parseFloat(element[attr] || "0");
-}
-
-class StatisticalLocaleSelector {
-  private root: any;
-  private static instance: StatisticalLocaleSelector | null = null;
-
-  public static async get() {
-    if (this.instance === null) {
-      this.instance = new StatisticalLocaleSelector();
-      await this.instance.loadUnicodeInfo();
-    }
-
-    return this.instance;
-  }
-
-  private async loadUnicodeInfo() {
-    this.root = await getUnicodeInfo();
-  }
-
-  private loadTerritoryData(isoCode: string): [string[], number[]] {
-    const territory = this.root.territoryInfo.territory.find(
-      (t: any) => t.$.type === isoCode,
-    );
-    if (!territory) {
-      throw new UnknownTerritory(`Unknown territory: ${isoCode}`);
-    }
-
-    const langPopulations = territory.languagePopulation;
-    if (!langPopulations) {
-      throw new Error(`No language data found for region: ${isoCode}`);
-    }
-
-    const languages = langPopulations.map((lang: any) => lang.$.type);
-    const percentages = langPopulations.map((lang: any) =>
-      asFloat(lang.$, "populationPercent"),
-    );
-
-    return this.normalizeProbabilities(languages, percentages);
-  }
-
-  private loadLanguageData(language: string): [string[], number[]] {
-    const territories = this.root.territory.filter((t: any) =>
-      t.languagePopulation.some((lp: any) => lp.$.type === language),
-    );
-
-    if (!territories.length) {
-      throw new UnknownLanguage(
-        `No region data found for language: ${language}`,
-      );
-    }
-
-    const regions: string[] = [];
-    const percentages: number[] = [];
-
-    for (const terr of territories) {
-      const region = terr.$.type;
-      const langPop = terr.languagePopulation.find(
-        (lp: any) => lp.$.type === language,
-      );
-
-      if (region && langPop) {
-        regions.push(region);
-        percentages.push(
-          ((asFloat(langPop.$, "populationPercent") *
-            asFloat(terr.$, "literacyPercent")) /
-            10000) *
-            asFloat(terr.$, "population"),
-        );
-      }
-    }
-
-    if (!regions.length) {
-      throw new Error(`No valid region data found for language: ${language}`);
-    }
-
-    return this.normalizeProbabilities(regions, percentages);
-  }
-
-  private normalizeProbabilities(
-    languages: string[],
-    freq: number[],
-  ): [string[], number[]] {
-    const total = freq.reduce((a, b) => a + b, 0);
-    return [languages, freq.map((f) => f / total)];
-  }
-
-  private weightedRandomChoice<T>(items: T[], weights: number[]): T {
-    const cumulativeWeights = weights.map((_, i, a) => {
-      return a.slice(0, i + 1).reduce((sum, weight) => sum + weight, 0);
-    });
-
-    const random =
-      Math.random() * cumulativeWeights[cumulativeWeights.length - 1];
-    return items[cumulativeWeights.findIndex((weight) => weight > random)];
-  }
-
-  fromRegion(region: string): Locale {
-    const [languages, probabilities] = this.loadTerritoryData(region);
-    const language = this.weightedRandomChoice(
-      languages,
-      probabilities,
-    ).replace("_", "-");
-    return normalizeLocale(`${language}-${region}`);
-  }
-
-  fromLanguage(language: string): Locale {
-    const [regions, probabilities] = this.loadLanguageData(language);
-    const region = this.weightedRandomChoice(regions, probabilities);
-    return normalizeLocale(`${language}-${region}`);
-  }
 }
