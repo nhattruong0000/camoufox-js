@@ -1,0 +1,6 @@
+node_modules/
+.yarn/
+scripts/
+*.mmdb
+dist/
+.npmrc
