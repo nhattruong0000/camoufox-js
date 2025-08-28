@@ -209,11 +209,31 @@ function validateOS(os?: typeof SUPPORTED_OS[number] | (typeof SUPPORTED_OS[numb
         return [...os];
     }
 
-    if (!SUPPORTED_OS.includes(os)) {
-        throw new InvalidOS(`Camoufox does not support the OS: '${os}'`);
+    // Create mapping for common OS name variations
+    const osMapping: Record<string, typeof SUPPORTED_OS[number]> = {
+        'macos': 'macos',
+        'mac': 'macos',
+        'darwin': 'macos',
+        'osx': 'macos',
+        'os x': 'macos',
+        'mac os': 'macos',
+        'mac os x': 'macos',
+        'windows': 'windows',
+        'win': 'windows',
+        'win32': 'windows',
+        'linux': 'linux',
+        'lin': 'linux',
+        'unix': 'linux'
+    };
+
+    const normalizedOS = os.toLowerCase();
+    const mappedOS = osMapping[normalizedOS];
+
+    if (!mappedOS) {
+        throw new InvalidOS(`Camoufox does not support the OS: '${os}'. Supported OS: ${SUPPORTED_OS.join(', ')}`);
     }
 
-    return [os];
+    return [mappedOS];
 }
 
 function cleanLocals(data: Record<string, any>): Record<string, any> {
