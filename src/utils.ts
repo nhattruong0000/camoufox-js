@@ -359,6 +359,12 @@ export interface LaunchOptions {
     /** Locale(s) to use. The first listed locale will be used for the Intl API. */
     locale?: string | string[];
 
+    /** Custom timezone to use for the browser session. 
+     * Takes priority over regular timezone and geoip-detected timezone.
+     * Example: "Asia/Tokyo", "America/New_York", "Europe/London"
+     */
+    custom_timezone?: string;
+
     /** List of Firefox addons to use. */
     addons?: string[];
 
@@ -473,6 +479,7 @@ export async function launchOptions({
     geoip,
     humanize,
     locale,
+    custom_timezone, // Add custom_timezone parameter
     addons,
     fonts,
     custom_fonts_only,
@@ -631,6 +638,16 @@ export async function launchOptions({
 
         const geolocation = await getGeolocation(geoip)
         config = { ...config, ...geolocation.asConfig() }
+    }
+
+    // Handle custom_timezone - takes priority over geoip timezone
+    if (custom_timezone) {
+        console.log(`🕒 Setting custom timezone: ${custom_timezone}`);
+        config['timezone'] = custom_timezone;
+        // Override any timezone that may have been set by geoip
+        if (config.geolocation) {
+            console.log('🔧 Custom timezone overriding geoip timezone');
+        }
     }
 
     // Raise a warning when a proxy is being used without spoofing geolocation.
